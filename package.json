@@ -1,0 +1,22 @@
+{
+  "name": "aws-delegation53",
+  "version": "1.0.0",
+  "description": "",
+  "main": "update-ns.js",
+  "description": "Change the AWS-Route53 Delegation Records",
+  "scripts": {
+    "build": "tsc",
+    "start": "node update-ns.js"
+  },
+  "author": "Meno Abels <meno.abels@adviser.com>",
+  "repository": "https://github.com/mabels/aws-delegation53",
+  "license": "AFL-2.0",
+  "dependencies": {
+    "aws-sdk": "^2.734.0"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.27",
+    "typescript": "^3.9.7",
+    "ts-node": "^8.10.2"
+  }
+}
