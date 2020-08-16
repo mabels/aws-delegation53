@@ -27,7 +27,7 @@ jobs:
         mkdir -p $HOME/bin
         curl -L https://github.com/mabels/neckless/releases/download/v0.0.1/neckless-linux -o $HOME/bin/neckless
         chmod +x $HOME/bin/neckless
-        $HOME/bin/neckless kv --file ../.neckless ls -onlyValue DOCKER_SECRET | docker login --username fastandfearless --password-stdin
+        $HOME/bin/neckless kv --file ./.neckless ls -onlyValue DOCKER_SECRET | docker login --username fastandfearless --password-stdin
         GITVER=$(git rev-parse --short HEAD)
         docker build . -t fastandfearless/aws-delegation53:$GITVER
         docker push fastandfearless/aws-delegation53:$GITVER
