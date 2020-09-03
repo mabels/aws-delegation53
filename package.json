@@ -11,12 +11,17 @@
   "repository": "https://github.com/mabels/aws-delegation53",
   "license": "AFL-2.0",
   "dependencies": {
-    "aws-sdk": "^2.734.0"
+    "@aws-cdk/aws-iam": "^1.61.1",
+    "@aws-cdk/aws-route53": "^1.61.1",
+    "@aws-cdk/core": "^1.61.1",
+    "aws-cdk": "^1.61.1",
+    "aws-sdk": "^2.734.0",
+    "cdk": "^1.61.1"
   },
   "devDependencies": {
     "@types/node": "^14.0.27",
     "@vercel/ncc": "^0.23.0",
-    "typescript": "^3.9.7",
-    "ts-node": "^8.10.2"
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
   }
 }

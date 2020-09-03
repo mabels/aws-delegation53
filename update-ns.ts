@@ -1,169 +1,119 @@
-import * as AWS from "aws-sdk";
-import { Route53 } from "aws-sdk";
+import { AccountsHostedZones, assumeRole, getHostedZones, AccountsHostedZone, updateRecord, Route53Account } from './aws-binding';
+import AWS, { Route53 } from 'aws-sdk';
+import { harmonizeName, buildZoneTree, walkTree, filterNS, deleteAddNS } from './domain-tree';
 
-async function assumeRole(
-  profile: AWS.STS.ClientConfiguration,
-  assumeRole: string,
-  session = `assumedRole_${assumeRole.replace(/[^A-Za-z0-9]/g, '_')}`
-): Promise<AWS.STS.AssumeRoleResponse> {
-  return new Promise((rs, rj) => {
-    let sts = new AWS.STS({
-      apiVersion: "2011-06-15",
-      ...profile,
-    });
-    sts.assumeRole(
-      {
-        RoleArn: assumeRole,
-        RoleSessionName: "router",
-      },
-      (err, data) => {
-        if (err) {
-          rj(err);
-        } else {
-          rs(data);
-        }
-      }
+
+
+  async function getAccountsHostedZones(
+    credentials: AWS.STS.ClientConfiguration,
+    accounts: Route53Account[]
+  ): Promise<AccountsHostedZones[]> {
+    return Promise.all(
+      accounts.map(async (account) => {
+        const assume = await assumeRole(credentials, account.roleArn);
+        const route53 = new AWS.Route53({
+          secretAccessKey: assume.Credentials!.SecretAccessKey,
+          accessKeyId: assume.Credentials!.AccessKeyId,
+          sessionToken: assume.Credentials!.SessionToken,
+        });
+        return {
+          account,
+          route53,
+          zones: await getHostedZones(route53),
+        };
+      })
     );
-  });
-}
+  }
 
-export interface ZoneRecord {
-  readonly hostZoneRecord: AWS.Route53.ResourceRecordSet;
-  readonly topZoneRecord?: AWS.Route53.ResourceRecordSet;
-  readonly zone: AWS.Route53.HostedZone;
-}
 
-export interface UpdateZoneRecord extends ZoneRecord {
-  readonly topZoneRecord: AWS.Route53.ResourceRecordSet;
-}
-
-async function getHostedZones(
-  route53: AWS.Route53
-): Promise<AWS.Route53.ListHostedZonesResponse> {
-  return new Promise(async (rs, rj) => {
-    route53.listHostedZones({}, async (err, hostzones) => {
-      if (err) {
-        rj(err);
-        return;
-      }
-      rs(hostzones);
-    });
-  });
-}
-
-async function getZoneRecord(
-  route53: AWS.Route53,
-  hostzone: AWS.Route53.HostedZone,
-  recordName = hostzone.Name
-) {
-  return new Promise<AWS.Route53.ResourceRecordSet[]>((rs, rj) => {
-    const params = {
-      HostedZoneId: hostzone.Id, // required
-      MaxItems: "16",
-      // StartRecordIdentifier: '*',
-      StartRecordName: recordName,
-      StartRecordType: "NS",
-    };
-    route53.listResourceRecordSets(params, (err, data) => {
-      if (err) {
-        rj(err);
-        return;
-      }
-      const nss = data.ResourceRecordSets.filter(
-        (rrs) => rrs.Type === "NS" && rrs.Name === recordName
-      );
-      rs(nss);
-    });
-  });
-}
-
-async function updateRecord(route53: AWS.Route53, zone: UpdateZoneRecord, ttl = 60, action = 'UPSERT'): Promise<Route53.ChangeResourceRecordSetsResponse> {
-  const params = {
-    ChangeBatch: {
-      Changes: [
-        {
-          Action: action,
-          ResourceRecordSet: {
-            Name: zone.topZoneRecord!.Name,
-            ResourceRecords: zone.hostZoneRecord.ResourceRecords,
-            TTL: ttl,
-            Type: zone.hostZoneRecord.Type,
-          },
-        },
-      ],
-      Comment: `Set the delegation for ${zone.topZoneRecord!.Name}`,
-    },
-    HostedZoneId: zone.zone.Id,
-  };
-  return new Promise((rs, rj) => {
-    route53.changeResourceRecordSets(params, function (err, data) {
-      if (err) {
-        rj(err);
-      } else {
-        rs(data);
-      }
-    });
-  });
-}
-
-async function waitFor(
-  route53: AWS.Route53,
-  data: Route53.ChangeResourceRecordSetsResponse
-): Promise<Route53.GetChangeResponse> {
-  const params = {
-    Id: data.ChangeInfo.Id,
-  };
-  return new Promise((rs, rj) => {
-    route53.waitFor("resourceRecordSetsChanged", params, (err, data) => {
-      if (err) {
-        rj(err);
-      } else {
-        rs(data);
-      }
-    });
-  });
-}
 
 export interface Config {
-  readonly srcProfile: string
-  readonly dstProfile: string
+  readonly accounts: Route53Account[];
 }
 
 export class ArgConfig implements Config {
-  readonly srcProfile: string
-  readonly dstProfile: string
+  readonly accounts: Route53Account[];
+  // readonly srcProfile: string
+  // readonly dstRoleArn: string
   constructor(args: string[]) {
-    this.srcProfile = args[args.length - 2]
-    this.dstProfile = args[args.length - 1]
+    this.accounts = args.slice(2).map((i) => ({
+      roleArn: i,
+    }));
   }
 }
 
 (async (config: Config) => {
-  const credentials = new AWS.SharedIniFileCredentials({
-    profile: config.srcProfile
+  const credentials = new AWS.EC2MetadataCredentials({
+    // httpOptions: { timeout: 5000 }, // 5 second timeout
+    // maxRetries: 10, // retry 10 times
+    // retryDelayOptions: { base: 200 } // see AWS.Config for information
   });
-  const srcRoute53 = new AWS.Route53({
-    secretAccessKey: credentials.secretAccessKey,
-    accessKeyId: credentials.accessKeyId,
-    sessionToken: credentials.sessionToken,
+  await credentials.getPromise();
+
+  const ret = await getAccountsHostedZones(credentials, config.accounts);
+  // console.log(
+  //   config.accounts,
+  //   ret.map((i) => JSON.stringify(i.zones))
+  // );
+
+  const tree = buildZoneTree(ret);
+
+  await walkTree(tree, async (tree, v) => {
+    if (tree.ref && v.ref) {
+      // console.log(tree.ref!.zone.hostZone.Id, tree.ref!.zone.recordSet)
+      const topNSRecs = filterNS(tree.ref!.zone.recordSet, v.ref!.name);
+      const downNSRecs = filterNS(v.ref!.zone.recordSet, v.ref!.name);
+      const da = deleteAddNS(topNSRecs, downNSRecs);
+      // console.log(topNSRecs, downNSRecs)
+      if (da.add.length) {
+        const first = da.add[0];
+        const nsrec: Route53.ResourceRecordSet = {
+          Name: first.Name,
+          Type: first.Type,
+          TTL: first.TTL,
+          ResourceRecords: downNSRecs.map((i) => ({ Value: i.ResourceRecord })),
+        };
+        console.log(
+          `Add:${tree.ref!.accountsHostedZones.account.roleArn}:`,
+          nsrec
+        );
+        await updateRecord(
+          tree.ref!.accountsHostedZones.route53,
+          nsrec,
+          tree.ref!.zone.hostZone.Id,
+          v.ref!.accountsHostedZones.account.roleArn
+        );
+      }
+    }
   });
-  const srcDomains = await getHostedZones(srcRoute53);
 
-  const topRole = await assumeRole(
-    {
-      ...credentials,
-      secretAccessKey: credentials.secretAccessKey,
-    },
-    config.dstProfile
-  );
+  // const ret1 = await getAccountsFromDNS(ret);
 
-  const topRoute53 = new AWS.Route53({
-    secretAccessKey: topRole.Credentials!.SecretAccessKey,
-    accessKeyId: topRole.Credentials!.AccessKeyId,
-    sessionToken: topRole.Credentials!.SessionToken,
-  });
+  // // const credentials = new AWS.SharedIniFileCredentials({
+  // //   profile: config.srcProfile
+  // // });
+  // const srcCredentials = {
+  //   secretAccessKey: credentials.secretAccessKey,
+  //   accessKeyId: credentials.accessKeyId,
+  //   sessionToken: credentials.sessionToken,
+  // }
+  // const srcRoute53 = new AWS.Route53(srcCredentials)
+  // const srcDomains = await getHostedZones(srcRoute53);
 
-  const topDomains = await getHostedZones(topRoute53);
+  // const remoteCred = {
+  //     ...credentials,
+  //     secretAccessKey: credentials.secretAccessKey,
+  //   }
+  // const remoteRole = await assumeRole(remoteCred, config.dstRoleArn);
+  // const remoteRoute53 = new AWS.Route53({
+  //   secretAccessKey: remoteRole.Credentials!.SecretAccessKey,
+  //   accessKeyId: remoteRole.Credentials!.AccessKeyId,
+  //   sessionToken: remoteRole.Credentials!.SessionToken,
+  // });
+
+  // const remoteDomains = await getHostedZones(remoteRoute53);
+  // console.log(srcDomains,  remoteDomains)
+  /*
 
   const updateDomains: ZoneRecord[] = [];
   for (let topZone of topDomains.HostedZones) {
@@ -227,4 +177,5 @@ export class ArgConfig implements Config {
       console.log(wait);
     }
   }
+  */
 })(new ArgConfig(process.argv));
