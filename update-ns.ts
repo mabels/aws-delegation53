@@ -1,31 +1,40 @@
-import { AccountsHostedZones, assumeRole, getHostedZones, AccountsHostedZone, updateRecord, Route53Account } from './aws-binding';
-import AWS, { Route53 } from 'aws-sdk';
-import { harmonizeName, buildZoneTree, walkTree, filterNS, deleteAddNS } from './domain-tree';
+import {
+  AccountsHostedZones,
+  assumeRole,
+  getHostedZones,
+  AccountsHostedZone,
+  updateRecord,
+  Route53Account,
+} from "./aws-binding";
+import AWS, { Route53 } from "aws-sdk";
+import {
+  harmonizeName,
+  buildZoneTree,
+  walkTree,
+  filterNS,
+  deleteAddNS,
+} from "./domain-tree";
 
-
-
-  async function getAccountsHostedZones(
-    credentials: AWS.STS.ClientConfiguration,
-    accounts: Route53Account[]
-  ): Promise<AccountsHostedZones[]> {
-    return Promise.all(
-      accounts.map(async (account) => {
-        const assume = await assumeRole(credentials, account.roleArn);
-        const route53 = new AWS.Route53({
-          secretAccessKey: assume.Credentials!.SecretAccessKey,
-          accessKeyId: assume.Credentials!.AccessKeyId,
-          sessionToken: assume.Credentials!.SessionToken,
-        });
-        return {
-          account,
-          route53,
-          zones: await getHostedZones(route53),
-        };
-      })
-    );
-  }
-
-
+async function getAccountsHostedZones(
+  credentials: AWS.STS.ClientConfiguration,
+  accounts: Route53Account[]
+): Promise<AccountsHostedZones[]> {
+  return Promise.all(
+    accounts.map(async (account) => {
+      const assume = await assumeRole(credentials, account.roleArn);
+      const route53 = new AWS.Route53({
+        secretAccessKey: assume.Credentials!.SecretAccessKey,
+        accessKeyId: assume.Credentials!.AccessKeyId,
+        sessionToken: assume.Credentials!.SessionToken,
+      });
+      return {
+        account,
+        route53,
+        zones: await getHostedZones(route53),
+      };
+    })
+  );
+}
 
 export interface Config {
   readonly accounts: Route53Account[];
@@ -87,95 +96,4 @@ export class ArgConfig implements Config {
     }
   });
 
-  // const ret1 = await getAccountsFromDNS(ret);
-
-  // // const credentials = new AWS.SharedIniFileCredentials({
-  // //   profile: config.srcProfile
-  // // });
-  // const srcCredentials = {
-  //   secretAccessKey: credentials.secretAccessKey,
-  //   accessKeyId: credentials.accessKeyId,
-  //   sessionToken: credentials.sessionToken,
-  // }
-  // const srcRoute53 = new AWS.Route53(srcCredentials)
-  // const srcDomains = await getHostedZones(srcRoute53);
-
-  // const remoteCred = {
-  //     ...credentials,
-  //     secretAccessKey: credentials.secretAccessKey,
-  //   }
-  // const remoteRole = await assumeRole(remoteCred, config.dstRoleArn);
-  // const remoteRoute53 = new AWS.Route53({
-  //   secretAccessKey: remoteRole.Credentials!.SecretAccessKey,
-  //   accessKeyId: remoteRole.Credentials!.AccessKeyId,
-  //   sessionToken: remoteRole.Credentials!.SessionToken,
-  // });
-
-  // const remoteDomains = await getHostedZones(remoteRoute53);
-  // console.log(srcDomains,  remoteDomains)
-  /*
-
-  const updateDomains: ZoneRecord[] = [];
-  for (let topZone of topDomains.HostedZones) {
-    for (let srcZone of srcDomains.HostedZones) {
-      const hostZoneRecords = await getZoneRecord(srcRoute53, srcZone);
-      const topZoneRecords = await getZoneRecord(
-        topRoute53,
-        topZone,
-        srcZone.Name
-      );
-      for (let hostZoneRecord of hostZoneRecords) {
-        for (let topZoneRecord of topZoneRecords.length
-          ? topZoneRecords
-          : [undefined]) {
-          if (topZoneRecord) {
-            let dontNeedUpdate =
-              hostZoneRecord.Name == topZoneRecord.Name &&
-              hostZoneRecord.Type == topZoneRecord.Type &&
-              hostZoneRecord.ResourceRecords &&
-              topZoneRecord.ResourceRecords &&
-              hostZoneRecord.ResourceRecords.length ==
-                topZoneRecord.ResourceRecords.length;
-            if (
-              dontNeedUpdate &&
-              hostZoneRecord.ResourceRecords &&
-              topZoneRecord.ResourceRecords
-            ) {
-              const x = hostZoneRecord.ResourceRecords.map(
-                (i) => i.Value
-              ).sort();
-              const y = topZoneRecord.ResourceRecords.map(
-                (i) => i.Value
-              ).sort();
-              dontNeedUpdate =
-                x.filter((i, idx) => i === y[idx]).length == x.length;
-            }
-            if (dontNeedUpdate) {
-              topZoneRecord = undefined;
-            }
-          } else {
-            topZoneRecord = hostZoneRecord
-          }
-          updateDomains.push({
-            hostZoneRecord: hostZoneRecord,
-            topZoneRecord: topZoneRecord,
-            zone: topZone,
-          });
-        }
-      }
-    }
-  }
-  for (let zone of updateDomains) {
-    console.log(zone);
-    if (zone.topZoneRecord) {
-      const update = await updateRecord(topRoute53, {
-        ...zone,
-        topZoneRecord: zone.topZoneRecord
-      }, 60)
-      console.log(update);
-      const wait = await waitFor(topRoute53, update)
-      console.log(wait);
-    }
-  }
-  */
 })(new ArgConfig(process.argv));

@@ -6,10 +6,11 @@ export function harmonizeName(name: string) {
     .toLocaleLowerCase()
     .trim()
     .replace(/\.+/g, ".")
+    .replace(/^\./, "") // no leading .
     .replace(/\.$/, ""); // no trailing .
 }
 
-function revDomains(dname: string) {
+export function revDomains(dname: string) {
   const out: string[] = [];
   let d: string[] = [];
   dname
@@ -26,10 +27,11 @@ export class Leaf<T = AccountsHostedZone> {
   parent?: Leaf<T>;
   children: Map<string, Leaf<T>> = new Map();
   ref?: T;
-  public add(name: string, ref?: T) {
+
+  public add(name: string, ref?: T): Leaf<T> {
     let found = this.children.get(name);
     if (!found) {
-      found = new Leaf();
+      found = new Leaf<T>();
       this.children.set(name, found);
     }
     found.parent = this;
@@ -119,21 +121,29 @@ export function deleteAddNS(n1: ResourceRecord[], n2: ResourceRecord[]) {
   const del: ResourceRecord[] = [];
   const add: ResourceRecord[] = [];
   n1.forEach((i, idx) => {
-    if (!n2[idx] || i.Name !== n2[idx].Name) {
+    if (!n2[idx] || !(
+      i.Name === n2[idx].Name &&
+      i.TTL === n2[idx].TTL &&
+      i.ResourceRecord === n2[idx].ResourceRecord
+      )) {
       del.push(i);
     }
   });
   n2.forEach((i, idx) => {
-    if (!n1[idx] || i.Name !== n1[idx].Name) {
+    if (!n1[idx] || !(
+      i.Name === n1[idx].Name &&
+      i.TTL === n1[idx].TTL &&
+      i.ResourceRecord === n1[idx].ResourceRecord
+      )) {
       add.push(i);
     }
   });
   return { del, add };
 }
 
-export async function walkTree(
-  tree: Leaf,
-  cb: (top: Leaf, down: Leaf) => Promise<unknown>
+export async function walkTree<T>(
+  tree: Leaf<T>,
+  cb: (top: Leaf<T>, down: Leaf<T>) => Promise<unknown>
 ): Promise<unknown[]> {
   return Promise.all(
     Array.from(tree.children.values()).map(async (v) => {
