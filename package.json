@@ -4,28 +4,37 @@
   "description": "Change the AWS-Route53 Delegation Records",
   "main": "./dist/index.js",
   "scripts": {
+    "watch": "tsc -w",
+    "tsc": "tsc",
     "build": "ncc -- build update-ns.ts",
     "start": "node .",
+    "cdk": "cdk",
     "test": "jest -c jest.js"
   },
   "author": "Meno Abels <meno.abels@adviser.com>",
   "repository": "https://github.com/mabels/aws-delegation53",
   "license": "AFL-2.0",
   "dependencies": {
-    "@aws-cdk/aws-iam": "^1.61.1",
-    "@aws-cdk/aws-route53": "^1.61.1",
-    "@aws-cdk/core": "^1.61.1",
+    "@aws-cdk/assert": "1.62.0",
+    "@aws-cdk/aws-apigateway": "^1.62.0",
+    "@aws-cdk/aws-iam": "^1.62",
+    "@aws-cdk/aws-lambda": "^1.62.0",
+    "@aws-cdk/aws-route53": "^1.62",
+    "@aws-cdk/aws-s3": "^1.62.0",
+    "@aws-cdk/core": "1.62.0",
     "@types/jest": "^26.0.13",
-    "aws-cdk": "^1.61.1",
+    "@types/node": "10.17.27",
+    "aws-cdk": "1.62.0",
     "aws-sdk": "^2.734.0",
-    "cdk": "^1.61.1",
+    "cdk": "^1.62",
     "jest": "^26.4.2",
-    "ts-jest": "^26.3.0"
+    "source-map-support": "^0.5.16",
+    "ts-jest": "^26.3.0",
+    "ts-node": "^8.10.2"
   },
   "devDependencies": {
     "@types/node": "^14.0.27",
     "@vercel/ncc": "^0.23.0",
-    "ts-node": "^8.10.2",
-    "typescript": "^3.9.7"
+    "typescript": "^4.0.0"
   }
 }

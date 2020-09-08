@@ -6,7 +6,7 @@ import {
   updateRecord,
   Route53Account,
 } from "./aws-binding";
-import AWS, { Route53 } from "aws-sdk";
+import { Route53, STS, EC2MetadataCredentials } from "aws-sdk";
 import {
   harmonizeName,
   buildZoneTree,
@@ -16,13 +16,13 @@ import {
 } from "./domain-tree";
 
 async function getAccountsHostedZones(
-  credentials: AWS.STS.ClientConfiguration,
+  credentials: STS.ClientConfiguration,
   accounts: Route53Account[]
 ): Promise<AccountsHostedZones[]> {
   return Promise.all(
     accounts.map(async (account) => {
       const assume = await assumeRole(credentials, account.roleArn);
-      const route53 = new AWS.Route53({
+      const route53 = new Route53({
         secretAccessKey: assume.Credentials!.SecretAccessKey,
         accessKeyId: assume.Credentials!.AccessKeyId,
         sessionToken: assume.Credentials!.SessionToken,
@@ -52,7 +52,7 @@ export class ArgConfig implements Config {
 }
 
 (async (config: Config) => {
-  const credentials = new AWS.EC2MetadataCredentials({
+  const credentials = new EC2MetadataCredentials({
     // httpOptions: { timeout: 5000 }, // 5 second timeout
     // maxRetries: 10, // retry 10 times
     // retryDelayOptions: { base: 200 } // see AWS.Config for information
