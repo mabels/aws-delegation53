@@ -1,10 +1,48 @@
-import * as cdk from '@aws-cdk/core';
+import * as fs from 'fs';
+import * as core from "@aws-cdk/core";
+import * as cdk from "@aws-cdk/core";
+import * as lambda from "@aws-cdk/aws-lambda";
+import * as iam from "@aws-cdk/aws-iam";
+import * as events from '@aws-cdk/aws-events';
+import * as targets from '@aws-cdk/aws-events-targets';
+import { PolicyStatement } from '@aws-cdk/aws-iam';
 
-import * as widget_service from '../lib/widget_service';
+export interface AWSDelegation53Props extends cdk.StackProps {
+  readonly delegatorRole?: string
+}
 
 export class AWSDelegation53Stack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: cdk.Construct, id: string, props?: AWSDelegation53Props) {
     super(scope, id, props);
-    new widget_service.WidgetService(this, 'Widgets');
+
+    const delegator = new iam.Role(this, props?.delegatorRole || "delegation53", {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      roleName: props?.delegatorRole || "delegation53"
+    })
+    delegator.addManagedPolicy({
+      managedPolicyArn: "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    })
+    delegator.addToPolicy(new PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: ["*"],
+        actions: ["sts:AssumeRole"],
+    }))
+
+    const lambdaFn = new lambda.Function(this, "AWSDelegation53", {
+      runtime: lambda.Runtime.NODEJS_12_X, // So we can use async in widget.js
+      code: lambda.Code.asset("dist"),
+      handler: "index.awsMain",
+      timeout: cdk.Duration.seconds(5),
+      environment: {
+        ROLES: "arn:aws:iam::636115553943:role/fielmann_cloud,arn:aws:iam::167250265666:role/fielmann_cloud"
+      },
+      role: delegator
+    });
+
+    const rule = new events.Rule(this, 'Rule', {
+      schedule: events.Schedule.expression('rate(5 minutes)')
+    });
+
+    rule.addTarget(new targets.LambdaFunction(lambdaFn));
   }
 }

@@ -38,28 +38,37 @@ async function getAccountsHostedZones(
 
 export interface Config {
   readonly accounts: Route53Account[];
+  readonly credentials: STS.ClientConfiguration;
 }
 
 export class ArgConfig implements Config {
   readonly accounts: Route53Account[];
+  readonly credentials: EC2MetadataCredentials;
   // readonly srcProfile: string
   // readonly dstRoleArn: string
   constructor(args: string[]) {
     this.accounts = args.slice(2).map((i) => ({
       roleArn: i,
     }));
+    this.credentials = new EC2MetadataCredentials({
+      // httpOptions: { timeout: 5000 }, // 5 second timeout
+      // maxRetries: 10, // retry 10 times
+      // retryDelayOptions: { base: 200 } // see AWS.Config for information
+    });
+  }
+  async start() {
+    await this.credentials.getPromise();
+    return this
   }
 }
 
-(async (config: Config) => {
-  const credentials = new EC2MetadataCredentials({
-    // httpOptions: { timeout: 5000 }, // 5 second timeout
-    // maxRetries: 10, // retry 10 times
-    // retryDelayOptions: { base: 200 } // see AWS.Config for information
-  });
-  await credentials.getPromise();
+export async function updateDNS(config: Config) {
+  const time = new Date();
+  console.log(`updateDNS:started ${time} with ${JSON.stringify(config.accounts)}`);
 
-  const ret = await getAccountsHostedZones(credentials, config.accounts);
+
+
+  const ret = await getAccountsHostedZones(config.credentials, config.accounts);
   // console.log(
   //   config.accounts,
   //   ret.map((i) => JSON.stringify(i.zones))
@@ -96,4 +105,6 @@ export class ArgConfig implements Config {
     }
   });
 
-})(new ArgConfig(process.argv));
+}
+
+// )(new ArgConfig(process.argv));

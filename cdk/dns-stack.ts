@@ -5,6 +5,7 @@ import { PolicyStatement } from "@aws-cdk/aws-iam";
 
 export interface DNSProps {
   readonly dnsAdmin: string;
+  readonly delegation53Arn: string;
   readonly domains: string[];
 }
 
@@ -16,7 +17,7 @@ function dnsStack( stack: cdk.Stack, props: DNSProps) {
       })
   );
   const dnsAdmin = new iam.Role(stack, props.dnsAdmin, {
-	  assumedBy: new iam.AccountRootPrincipal(),
+	  assumedBy: new iam.ArnPrincipal(props.delegation53Arn),
 	  roleName: props.dnsAdmin
   })
   dnsAdmin.addToPolicy(
