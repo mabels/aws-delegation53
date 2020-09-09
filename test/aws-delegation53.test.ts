@@ -5,7 +5,7 @@ import { AWSDelegation53Stack } from '../lib/aws-delegation53-stack';
 test('Empty Stack', () => {
     const app = new cdk.App();
     // WHEN
-    const stack = new AWSDelegation53Stack(app, 'MyTestStack');
+    const stack = new AWSDelegation53Stack(app, 'MyTestStack', { observedRoles: [] });
     // THEN
     expectCDK(stack).to(matchTemplate({
       "Resources": {}

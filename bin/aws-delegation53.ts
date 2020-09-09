@@ -4,4 +4,6 @@ import * as cdk from '@aws-cdk/core';
 import { AWSDelegation53Stack } from '../lib/aws-delegation53-stack';
 
 const app = new cdk.App();
-new AWSDelegation53Stack(app, 'AWSDelegation53Stack');
+new AWSDelegation53Stack(app, 'AWSDelegation53Stack', {
+	observedRoles: (process.env.ROLES || "").split(/[\s,]+/).map(i => i.trim()).filter(i => i.length)
+});

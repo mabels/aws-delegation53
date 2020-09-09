@@ -8,11 +8,12 @@ import * as targets from '@aws-cdk/aws-events-targets';
 import { PolicyStatement } from '@aws-cdk/aws-iam';
 
 export interface AWSDelegation53Props extends cdk.StackProps {
-  readonly delegatorRole?: string
+  readonly delegatorRole?: string // default delegation53
+  readonly observedRoles: string[] // 
 }
 
 export class AWSDelegation53Stack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: AWSDelegation53Props) {
+  constructor(scope: cdk.Construct, id: string, props: AWSDelegation53Props) {
     super(scope, id, props);
 
     const delegator = new iam.Role(this, props?.delegatorRole || "delegation53", {
@@ -34,7 +35,7 @@ export class AWSDelegation53Stack extends cdk.Stack {
       handler: "index.awsMain",
       timeout: cdk.Duration.seconds(5),
       environment: {
-        ROLES: "arn:aws:iam::636115553943:role/fielmann_cloud,arn:aws:iam::167250265666:role/fielmann_cloud"
+        ROLES: props.observedRoles.map(i => i.trim()).join(",")
       },
       role: delegator
     });
