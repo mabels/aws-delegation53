@@ -7,7 +7,7 @@
     "watch": "tsc -w",
     "tsc": "tsc",
     "build": "ncc -- build src/aws-main.ts",
-    "start": "node .",
+    "start": "node -e 'require(\".\").awsMain().then(console.log).catch(console.error)' .",
     "cdk": "cdk",
     "test": "jest -c jest.js",
     "prepublish": "rm -rf ./dist && npm run build"
@@ -16,28 +16,27 @@
   "repository": "https://github.com/mabels/aws-delegation53",
   "license": "AFL-2.0",
   "dependencies": {
-    "@aws-cdk/assert": "1.62.0",
-    "@aws-cdk/aws-apigateway": "^1.62.0",
-    "@aws-cdk/aws-events": "^1.62.0",
-    "@aws-cdk/aws-events-targets": "^1.62.0",
+    "@aws-cdk/assert": "1.65.0",
+    "@aws-cdk/aws-apigateway": "^1.65.0",
+    "@aws-cdk/aws-events": "^1.65.0",
+    "@aws-cdk/aws-events-targets": "^1.65.0",
     "@aws-cdk/aws-iam": "^1.62",
-    "@aws-cdk/aws-lambda": "^1.62.0",
-    "@aws-cdk/aws-route53": "^1.62",
-    "@aws-cdk/aws-s3": "^1.62.0",
-    "@aws-cdk/core": "1.62.0",
-    "@types/jest": "^26.0.13",
-    "@types/node": "10.17.27",
-    "aws-cdk": "1.62.0",
+    "@aws-cdk/aws-lambda": "^1.65.0",
+    "@aws-cdk/aws-route53": "^1.65.0",
+    "@aws-cdk/aws-s3": "^1.65.0",
+    "@aws-cdk/core": "1.65.0",
+    "aws-cdk": "1.65.0",
     "aws-sdk": "^2.734.0",
-    "cdk": "^1.62",
-    "source-map-support": "^0.5.16",
-    "ts-jest": "^26.3.0",
-    "typescript": "^4.0.0",
-    "ts-node": "^8.10.2"
+    "cdk": "^1.65.0"
   },
   "devDependencies": {
-    "jest": "^26.4.2",
+    "@types/jest": "^26.0.13",
     "@types/node": "^14.0.27",
-    "@vercel/ncc": "^0.23.0"
+    "source-map-support": "^0.5.16",
+    "jest": "^26.4.2",
+    "@vercel/ncc": "^0.23.0",
+    "ts-jest": "^26.3.0",
+    "typescript": "^4.0.0",
+    "ts-node": "^9.0.0"
   }
 }

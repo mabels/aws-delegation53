@@ -28,7 +28,7 @@ jobs:
         mount
         env|sort
         mkdir -p $HOME/bin
-        curl -L https://github.com/mabels/neckless/releases/download/v0.0.1/neckless-linux -o $HOME/bin/neckless
+        curl -L -o ./neckless https://github.com/mabels/neckless/releases/download/v0.1.3/default.neckless-linux-amd64
         chmod +x $HOME/bin/neckless
         $HOME/bin/neckless kv --file ./.neckless ls -onlyValue DOCKER_SECRET | docker login --username fastandfearless --password-stdin
         GITVER=$(git rev-parse --short HEAD)

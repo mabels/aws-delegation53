@@ -10,13 +10,13 @@ export interface DNSProps {
 }
 
 
-function dnsStack( stack: cdk.Stack, props: DNSProps) {
+function dnsStack(stack: cdk.Stack, props: DNSProps) {
   const zones = props.domains.map((d) =>
       new route53.PublicHostedZone(stack, d, {
         zoneName: d,
       })
   );
-  const dnsAdmin = new iam.Role(stack, props.dnsAdmin, {
+  const dnsAdmin: iam.IRole = new iam.Role(stack, props.dnsAdmin, {
 	  assumedBy: new iam.ArnPrincipal(props.delegation53Arn),
 	  roleName: props.dnsAdmin
   })

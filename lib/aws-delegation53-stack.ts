@@ -9,14 +9,14 @@ import { PolicyStatement } from '@aws-cdk/aws-iam';
 
 export interface AWSDelegation53Props extends cdk.StackProps {
   readonly delegatorRole?: string // default delegation53
-  readonly observedRoles: string[] // 
+  readonly observedRoles: string[] //
 }
 
 export class AWSDelegation53Stack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: AWSDelegation53Props) {
     super(scope, id, props);
 
-    const delegator = new iam.Role(this, props?.delegatorRole || "delegation53", {
+    const delegator: iam.IRole = new iam.Role(this, props?.delegatorRole || "delegation53", {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       roleName: props?.delegatorRole || "delegation53"
     })
