@@ -36,14 +36,23 @@ async function getAccountsHostedZones(
   );
 }
 
+export interface Log {
+  info(...args: any): void;
+  error(...args: any): void;
+}
 export interface Config {
   readonly accounts: Route53Account[];
   readonly credentials: STS.ClientConfiguration;
+  readonly log: Log;
 }
 
 export class ArgConfig implements Config {
   readonly accounts: Route53Account[];
   readonly credentials: EC2MetadataCredentials;
+  readonly log = {
+    info: console.log,
+    error: console.error
+  }
   // readonly srcProfile: string
   // readonly dstRoleArn: string
   constructor(args: string[]) {
@@ -64,25 +73,15 @@ export class ArgConfig implements Config {
 
 export async function updateDNS(config: Config) {
   const time = new Date();
-  console.log(`updateDNS:started ${time} with ${JSON.stringify(config.accounts)}`);
-
-
-
+  config.log.info(`updateDNS:started ${time} with ${JSON.stringify(config.accounts)}`);
   const ret = await getAccountsHostedZones(config.credentials, config.accounts);
-  // console.log(
-  //   config.accounts,
-  //   ret.map((i) => JSON.stringify(i.zones))
-  // );
-
-  const tree = buildZoneTree(ret);
+  const tree = buildZoneTree(config.log, ret);
 
   await walkTree(tree, async (tree, v) => {
     if (tree.ref && v.ref) {
-      // console.log(tree.ref!.zone.hostZone.Id, tree.ref!.zone.recordSet)
       const topNSRecs = filterNS(tree.ref!.zone.recordSet, v.ref!.name);
       const downNSRecs = filterNS(v.ref!.zone.recordSet, v.ref!.name);
       const da = deleteAddNS(topNSRecs, downNSRecs);
-      // console.log(topNSRecs, downNSRecs)
       if (da.add.length) {
         const first = da.add[0];
         const nsrec: Route53.ResourceRecordSet = {
@@ -91,7 +90,7 @@ export async function updateDNS(config: Config) {
           TTL: first.TTL,
           ResourceRecords: downNSRecs.map((i) => ({ Value: i.ResourceRecord })),
         };
-        console.log(
+        config.log.info(
           `Add:${tree.ref!.accountsHostedZones.account.roleArn}:`,
           nsrec
         );

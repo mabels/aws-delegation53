@@ -50,51 +50,6 @@ test("Leaf", () => {
   expect(l.children.get("bli")?.ref).toBe("YYY");
 });
 
-// export function buildZoneTree(accounts: AccountsHostedZones[]) {
-//   const dnames = new Map<string, AccountsHostedZone[]>();
-//   accounts.forEach((ahzs) => {
-//     ahzs.zones.forEach((hzi) => {
-//       const dname = harmonizeName(hzi.hostZone.Name);
-//       // console.log(`dname=${dname}:${hzi.hostZone.Name}`)
-//       let found = dnames.get(dname);
-//       if (!found) {
-//         found = [];
-//         dnames.set(dname, found);
-//       }
-//       found.push({
-//         name: dname,
-//         accountsHostedZones: ahzs,
-//         zone: hzi,
-//       });
-//     });
-//   });
-//   const root = new Leaf();
-//   dnames.forEach((ahzs, dname) => {
-//     if (ahzs.length != 1) {
-//       console.error(
-//         `The ${dname} is skipped is owned by multiple accounts: ${JSON.stringify(
-//           ahzs.map((i) => i.accountsHostedZones.account.roleArn)
-//         )}`
-//       );
-//       return;
-//     }
-//     const ahz = ahzs[0];
-//     let parent = root;
-//     revDomains(dname).forEach((d) => {
-//       // console.log(`${dname} === ${d}`)
-//       parent = parent.add(d, dname === d ? ahz : undefined);
-//     });
-//   });
-//   return root;
-// }
-
-// interface ResourceRecord {
-//   Name: string;
-//   Type: string;
-//   TTL?: number;
-//   ResourceRecord: string;
-// }
-
 test("filterNS", () => {
   const my = filterNS(
     [
@@ -192,7 +147,7 @@ function accountsHostedZones(name: string): AccountsHostedZones {
 }
 
 test("buildZoneTree", async () => {
-  const empty = buildZoneTree([])
+  const empty = buildZoneTree(console, [])
   expect(empty.children.size).toBe(0)
   // const top = tree.add("top", "top");
   // const topTop1 = top.add("top.top1", "top.top1");
@@ -200,7 +155,7 @@ test("buildZoneTree", async () => {
   // topTop1.add("top.top1.top1", "top.top1.top1");
   // topTop2.add("top.top2.top2", "top.top2.top2");
   // tree.add("top1", "top1").add("top1.top1", "top1.top1")
-  const tree = buildZoneTree([
+  const tree = buildZoneTree(console, [
     accountsHostedZones("top.top1"),
     accountsHostedZones("top.top2"),
     accountsHostedZones("top.top1.top1"),

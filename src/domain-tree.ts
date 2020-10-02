@@ -1,5 +1,6 @@
 import { AccountsHostedZone, AccountsHostedZones } from "./aws-binding";
 import { Route53 } from 'aws-sdk';
+import { Log } from './update-ns';
 
 export function harmonizeName(name: string) {
   return name
@@ -42,12 +43,11 @@ export class Leaf<T = AccountsHostedZone> {
   }
 }
 
-export function buildZoneTree(accounts: AccountsHostedZones[]) {
+export function buildZoneTree(log: Log, accounts: AccountsHostedZones[]) {
   const dnames = new Map<string, AccountsHostedZone[]>();
   accounts.forEach((ahzs) => {
     ahzs.zones.forEach((hzi) => {
       const dname = harmonizeName(hzi.hostZone.Name);
-      // console.log(`dname=${dname}:${hzi.hostZone.Name}`)
       let found = dnames.get(dname);
       if (!found) {
         found = [];
@@ -63,7 +63,7 @@ export function buildZoneTree(accounts: AccountsHostedZones[]) {
   const root = new Leaf();
   dnames.forEach((ahzs, dname) => {
     if (ahzs.length != 1) {
-      console.error(
+      log.error(
         `The ${dname} is skipped is owned by multiple accounts: ${JSON.stringify(
           ahzs.map((i) => i.accountsHostedZones.account.roleArn)
         )}`
@@ -73,7 +73,6 @@ export function buildZoneTree(accounts: AccountsHostedZones[]) {
     const ahz = ahzs[0];
     let parent = root;
     revDomains(dname).forEach((d) => {
-      // console.log(`${dname} === ${d}`)
       parent = parent.add(d, dname === d ? ahz : undefined);
     });
   });

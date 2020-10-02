@@ -6,8 +6,8 @@
   "scripts": {
     "watch": "tsc -w",
     "tsc": "tsc",
-    "build": "ncc -- build src/aws-main.ts",
-    "start": "node -e 'require(\".\").awsMain().then(console.log).catch(console.error)' .",
+    "build": "ncc -- build src/mains.ts",
+    "start": "node -e 'require(\".\").standaloneMain()' .",
     "cdk": "cdk",
     "test": "jest -c jest.js",
     "prepublish": "rm -rf ./dist && npm run build"

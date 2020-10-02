@@ -1,20 +1,20 @@
-import * as AWS from "aws-sdk";
-import { Route53 } from "aws-sdk";
+import * as AWS from 'aws-sdk';
+import { Route53 } from 'aws-sdk';
 
 export async function assumeRole(
   profile: AWS.STS.ClientConfiguration,
   assumeRole: string,
-  session = `assumedRole_${assumeRole.replace(/[^A-Za-z0-9]/g, "_")}`
+  session = `assumedRole_${assumeRole.replace(/[^A-Za-z0-9]/g, '_')}`,
 ): Promise<AWS.STS.AssumeRoleResponse> {
   return new Promise((rs, rj) => {
     let sts = new AWS.STS({
-      apiVersion: "2011-06-15",
+      apiVersion: '2011-06-15',
       ...profile,
     });
     sts.assumeRole(
       {
         RoleArn: assumeRole,
-        RoleSessionName: "router",
+        RoleSessionName: 'router',
       },
       (err, data) => {
         if (err) {
@@ -22,15 +22,12 @@ export async function assumeRole(
         } else {
           rs(data);
         }
-      }
+      },
     );
   });
 }
 
-export async function getZoneRecords(
-  route53: AWS.Route53,
-  hostzone: AWS.Route53.HostedZone
-) {
+export async function getZoneRecords(route53: AWS.Route53, hostzone: AWS.Route53.HostedZone) {
   return new Promise<AWS.Route53.ResourceRecordSet[]>((rs, rj) => {
     const ret: AWS.Route53.ResourceRecordSet[] = [];
     function fetchAll(recordName: string) {
@@ -39,7 +36,7 @@ export async function getZoneRecords(
         // MaxItems: "16",
         // StartRecordIdentifier: '*',
         StartRecordName: recordName,
-        StartRecordType: "NS",
+        StartRecordType: 'NS',
       };
       route53.listResourceRecordSets(params, (err, data) => {
         if (err) {
@@ -63,7 +60,7 @@ export async function updateRecord(
   recordSet: Route53.ResourceRecordSet,
   zoneId: string,
   downRole: string,
-  action = "UPSERT"
+  action = 'UPSERT',
 ): Promise<Route53.ChangeResourceRecordSetsResponse> {
   const params = {
     ChangeBatch: {
@@ -90,13 +87,13 @@ export async function updateRecord(
 
 export async function waitFor(
   route53: AWS.Route53,
-  data: Route53.ChangeResourceRecordSetsResponse
+  data: Route53.ChangeResourceRecordSetsResponse,
 ): Promise<Route53.GetChangeResponse> {
   const params = {
     Id: data.ChangeInfo.Id,
   };
   return new Promise((rs, rj) => {
-    route53.waitFor("resourceRecordSetsChanged", params, (err, data) => {
+    route53.waitFor('resourceRecordSetsChanged', params, (err, data) => {
       if (err) {
         rj(err);
       } else {
@@ -127,9 +124,7 @@ export interface AccountsHostedZone {
   zone: HostedZoneInfo;
 }
 
-export async function getHostedZones(
-  route53: AWS.Route53
-): Promise<HostedZoneInfo[]> {
+export async function getHostedZones(route53: AWS.Route53): Promise<HostedZoneInfo[]> {
   const result: HostedZoneInfo[] = [];
   return new Promise(async (rs, rj) => {
     function listHostedZones(req: Route53.ListHostedZonesRequest) {
@@ -144,7 +139,7 @@ export async function getHostedZones(
               hostZone: hz,
               recordSet: await getZoneRecords(route53, hz),
             };
-          })
+          }),
         );
         result.push(...infos);
         if (hostzones.NextMarker && hostzones.IsTruncated) {
