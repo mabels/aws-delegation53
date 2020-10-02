@@ -7,7 +7,7 @@
     "watch": "tsc -w",
     "tsc": "tsc",
     "build": "ncc -- build src/mains.ts",
-    "start": "node -e 'require(\".\").standaloneMain()' .",
+    "start": "node -e 'require(\"./dist/index.js\").standaloneMain()' ./dist/index.js",
     "cdk": "cdk",
     "test": "jest -c jest.js",
     "prepublish": "rm -rf ./dist && npm run build"

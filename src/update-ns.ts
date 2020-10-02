@@ -5,19 +5,15 @@ import {
   AccountsHostedZone,
   updateRecord,
   Route53Account,
-} from "./aws-binding";
-import { Route53, STS, EC2MetadataCredentials } from "aws-sdk";
-import {
-  harmonizeName,
-  buildZoneTree,
-  walkTree,
-  filterNS,
-  deleteAddNS,
-} from "./domain-tree";
+} from './aws-binding';
+import { Route53, STS, EC2MetadataCredentials } from 'aws-sdk';
+import { buildZoneTree, walkTree, filterNS, deleteAddNS } from './domain-tree';
+
+export type LogFN = (h: Record<string, unknown>) => void;
 
 async function getAccountsHostedZones(
   credentials: STS.ClientConfiguration,
-  accounts: Route53Account[]
+  accounts: Route53Account[],
 ): Promise<AccountsHostedZones[]> {
   return Promise.all(
     accounts.map(async (account) => {
@@ -32,48 +28,24 @@ async function getAccountsHostedZones(
         route53,
         zones: await getHostedZones(route53),
       };
-    })
+    }),
   );
 }
 
-export interface Log {
-  info(...args: any): void;
-  error(...args: any): void;
-}
 export interface Config {
   readonly accounts: Route53Account[];
   readonly credentials: STS.ClientConfiguration;
-  readonly log: Log;
+  readonly log: LogFN;
 }
 
-export class ArgConfig implements Config {
-  readonly accounts: Route53Account[];
-  readonly credentials: EC2MetadataCredentials;
-  readonly log = {
-    info: console.log,
-    error: console.error
-  }
-  // readonly srcProfile: string
-  // readonly dstRoleArn: string
-  constructor(args: string[]) {
-    this.accounts = args.slice(2).map((i) => ({
-      roleArn: i,
-    }));
-    this.credentials = new EC2MetadataCredentials({
-      // httpOptions: { timeout: 5000 }, // 5 second timeout
-      // maxRetries: 10, // retry 10 times
-      // retryDelayOptions: { base: 200 } // see AWS.Config for information
-    });
-  }
-  async start() {
-    await this.credentials.getPromise();
-    return this
-  }
-}
 
 export async function updateDNS(config: Config) {
   const time = new Date();
-  config.log.info(`updateDNS:started ${time} with ${JSON.stringify(config.accounts)}`);
+  config.log({
+    action: 'updateDNS',
+    time: time,
+    actions: config.accounts,
+  });
   const ret = await getAccountsHostedZones(config.credentials, config.accounts);
   const tree = buildZoneTree(config.log, ret);
 
@@ -90,20 +62,24 @@ export async function updateDNS(config: Config) {
           TTL: first.TTL,
           ResourceRecords: downNSRecs.map((i) => ({ Value: i.ResourceRecord })),
         };
-        config.log.info(
-          `Add:${tree.ref!.accountsHostedZones.account.roleArn}:`,
-          nsrec
+        config.log(
+          // `Add:${tree.ref!.accountsHostedZones.account.roleArn}:${tree.ref!.name}:`,
+          {
+            action: 'ADD',
+            role: tree.ref!.accountsHostedZones.account.roleArn,
+            to: tree.ref!.name,
+            record: nsrec,
+          }
         );
         await updateRecord(
           tree.ref!.accountsHostedZones.route53,
           nsrec,
           tree.ref!.zone.hostZone.Id,
-          v.ref!.accountsHostedZones.account.roleArn
+          v.ref!.accountsHostedZones.account.roleArn,
         );
       }
     }
   });
-
 }
 
 // )(new ArgConfig(process.argv));

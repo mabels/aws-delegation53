@@ -7,6 +7,7 @@ COPY . /app
 RUN rm -rf node_modules
 RUN npm install 
 RUN npm run build
+RUN npm run test
 
 FROM node:lts-alpine3.11
 

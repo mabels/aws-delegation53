@@ -1,25 +1,25 @@
-import { AccountsHostedZone, AccountsHostedZones } from "./aws-binding";
+import { AccountsHostedZone, AccountsHostedZones } from './aws-binding';
 import { Route53 } from 'aws-sdk';
-import { Log } from './update-ns';
+import { LogFN } from './update-ns';
 
 export function harmonizeName(name: string) {
   return name
     .toLocaleLowerCase()
     .trim()
-    .replace(/\.+/g, ".")
-    .replace(/^\./, "") // no leading .
-    .replace(/\.$/, ""); // no trailing .
+    .replace(/\.+/g, '.')
+    .replace(/^\./, '') // no leading .
+    .replace(/\.$/, ''); // no trailing .
 }
 
 export function revDomains(dname: string) {
   const out: string[] = [];
   let d: string[] = [];
   dname
-    .split(".")
+    .split('.')
     .reverse()
     .forEach((part) => {
       d = [part, ...d];
-      out.push(d.join("."));
+      out.push(d.join('.'));
     });
   return out;
 }
@@ -43,7 +43,7 @@ export class Leaf<T = AccountsHostedZone> {
   }
 }
 
-export function buildZoneTree(log: Log, accounts: AccountsHostedZones[]) {
+export function buildZoneTree(log: LogFN, accounts: AccountsHostedZones[]) {
   const dnames = new Map<string, AccountsHostedZone[]>();
   accounts.forEach((ahzs) => {
     ahzs.zones.forEach((hzi) => {
@@ -63,11 +63,12 @@ export function buildZoneTree(log: Log, accounts: AccountsHostedZones[]) {
   const root = new Leaf();
   dnames.forEach((ahzs, dname) => {
     if (ahzs.length != 1) {
-      log.error(
-        `The ${dname} is skipped is owned by multiple accounts: ${JSON.stringify(
-          ahzs.map((i) => i.accountsHostedZones.account.roleArn)
-        )}`
-      );
+      log({
+        action: 'error',
+        msg: `The ${dname} is skipped is owned by multiple accounts: ${JSON.stringify(
+          ahzs.map((i) => i.accountsHostedZones.account.roleArn),
+        )}`,
+      });
       return;
     }
     const ahz = ahzs[0];
@@ -86,14 +87,11 @@ interface ResourceRecord {
   ResourceRecord: string;
 }
 
-export function filterNS(
-  rrss: Route53.ResourceRecordSet[],
-  name: string
-): ResourceRecord[] {
+export function filterNS(rrss: Route53.ResourceRecordSet[], name: string): ResourceRecord[] {
   const ret: ResourceRecord[] = [];
   rrss
     .filter((i) => {
-      return i.Type == "NS" && harmonizeName(i.Name) === harmonizeName(name);
+      return i.Type == 'NS' && harmonizeName(i.Name) === harmonizeName(name);
     })
     .forEach((i) => {
       i.ResourceRecords?.forEach((rrec) => {
@@ -120,20 +118,26 @@ export function deleteAddNS(n1: ResourceRecord[], n2: ResourceRecord[]) {
   const del: ResourceRecord[] = [];
   const add: ResourceRecord[] = [];
   n1.forEach((i, idx) => {
-    if (!n2[idx] || !(
-      i.Name === n2[idx].Name &&
-      i.TTL === n2[idx].TTL &&
-      i.ResourceRecord === n2[idx].ResourceRecord
-      )) {
+    if (
+      !n2[idx] ||
+      !(
+        i.Name === n2[idx].Name &&
+        i.TTL === n2[idx].TTL &&
+        i.ResourceRecord === n2[idx].ResourceRecord
+      )
+    ) {
       del.push(i);
     }
   });
   n2.forEach((i, idx) => {
-    if (!n1[idx] || !(
-      i.Name === n1[idx].Name &&
-      i.TTL === n1[idx].TTL &&
-      i.ResourceRecord === n1[idx].ResourceRecord
-      )) {
+    if (
+      !n1[idx] ||
+      !(
+        i.Name === n1[idx].Name &&
+        i.TTL === n1[idx].TTL &&
+        i.ResourceRecord === n1[idx].ResourceRecord
+      )
+    ) {
       add.push(i);
     }
   });
@@ -142,12 +146,12 @@ export function deleteAddNS(n1: ResourceRecord[], n2: ResourceRecord[]) {
 
 export async function walkTree<T>(
   tree: Leaf<T>,
-  cb: (top: Leaf<T>, down: Leaf<T>) => Promise<unknown>
+  cb: (top: Leaf<T>, down: Leaf<T>) => Promise<unknown>,
 ): Promise<unknown[]> {
   return Promise.all(
     Array.from(tree.children.values()).map(async (v) => {
       await cb(tree, v);
       return walkTree(v, cb);
-    })
+    }),
   );
 }

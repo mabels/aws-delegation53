@@ -9,6 +9,7 @@ import {
 } from "./domain-tree";
 import { AccountsHostedZone, AccountsHostedZones } from "./aws-binding";
 import { Route53 } from "aws-sdk";
+import { jsonLogger } from './mains';
 
 test("harmonizeName", () => {
   expect(harmonizeName("")).toBe("");
@@ -147,7 +148,7 @@ function accountsHostedZones(name: string): AccountsHostedZones {
 }
 
 test("buildZoneTree", async () => {
-  const empty = buildZoneTree(console, [])
+  const empty = buildZoneTree(jsonLogger, [])
   expect(empty.children.size).toBe(0)
   // const top = tree.add("top", "top");
   // const topTop1 = top.add("top.top1", "top.top1");
@@ -155,7 +156,7 @@ test("buildZoneTree", async () => {
   // topTop1.add("top.top1.top1", "top.top1.top1");
   // topTop2.add("top.top2.top2", "top.top2.top2");
   // tree.add("top1", "top1").add("top1.top1", "top1.top1")
-  const tree = buildZoneTree(console, [
+  const tree = buildZoneTree(jsonLogger, [
     accountsHostedZones("top.top1"),
     accountsHostedZones("top.top2"),
     accountsHostedZones("top.top1.top1"),
